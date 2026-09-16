@@ -1,0 +1,1 @@
+# Projeto-Degia---AI-Para-Energia-Solar
