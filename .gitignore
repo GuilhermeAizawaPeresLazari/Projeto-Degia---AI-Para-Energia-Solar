@@ -1,0 +1,21 @@
+.env
+.env.*
+!.env.example
+
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+.vscode/
+.idea/
+
+node_modules/
+.next/
+dist/
+build/
+
+# Repositórios externos do OpenDSS
+backend/app/opendss/electricdss-tst/
+opendss/electricdss-tst/

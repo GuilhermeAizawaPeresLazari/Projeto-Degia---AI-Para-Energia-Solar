@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: degia_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: degia
+      POSTGRES_USER: degia_user
+      POSTGRES_PASSWORD: degia123
+    ports:
+      - "5433:5432"
+    volumes:
+      - degia_postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  degia_postgres_data:

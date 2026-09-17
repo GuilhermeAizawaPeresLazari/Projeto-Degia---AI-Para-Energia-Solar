@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEGIA</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+    <div class="topbar-inner">
+        <div>
+            <h1>DEGIA</h1>
+            <p>Inteligência para Energia Solar</p>
+        </div>
+        <nav class="nav-tabs" aria-label="Navegação principal">
+            <button class="nav-tab active" data-target="cadastroView">Projetos</button>
+            <button class="nav-tab" data-target="cenariosView">Cenários</button>
+            <button class="nav-tab" data-target="dashboardView">Dashboard</button>
+        </nav>
+    </div>
+</header>
+
+<main class="container">
+    <section class="hero">
+        <span class="tag">MVP 0.7</span>
+        <h2>Avaliação Técnico-Econômica de Projetos Fotovoltaicos</h2>
+        <p>
+            A UF é carregada pela API pública do IBGE e a concessionária é consultada no portal de dados abertos da ANEEL.
+            A tensão de referência recebe uma sugestão inicial, mas deve ser confirmada conforme a instalação real.
+        </p>
+    </section>
+
+    <section id="cadastroView" class="view active-view">
+        <div class="card">
+            <div class="section-title">
+                <div>
+                    <span class="eyebrow">Projeto</span>
+                    <h3>Novo projeto fotovoltaico</h3>
+                    <p>Cadastre a instalação e selecione a concessionária disponível para a UF escolhida.</p>
+                </div>
+            </div>
+
+            <form id="projetoForm" class="grid">
+                <label>
+                    Nome do projeto
+                    <input id="nome" required placeholder="Ex.: Residencial Solar - Unidade A">
+                </label>
+
+                <label>
+                    UF
+                    <select id="uf" required disabled>
+                        <option value="">Carregando UFs...</option>
+                    </select>
+                    <small class="field-hint" id="ufHint">Consultando API do IBGE...</small>
+                </label>
+
+                <label>
+                    Concessionária
+                    <select id="concessionaria" required disabled>
+                        <option value="">Selecione primeiro a UF</option>
+                    </select>
+                    <small class="field-hint" id="concessionariaHint">A lista será consultada após selecionar a UF.</small>
+                </label>
+
+                <label>
+                    Potência FV instalada (kWp)
+                    <input id="potenciaFv" type="number" min="0.01" step="0.01" required>
+                </label>
+
+                <label>
+                    Carga local (kW)
+                    <input id="cargaLocal" type="number" min="0.01" step="0.01" required>
+                </label>
+
+                <label>
+                    Tensão de referência (V)
+                    <select id="tensaoReferencia" required disabled>
+                        <option value="">Selecione a concessionária primeiro</option>
+                    </select>
+                    <small class="field-hint" id="tensaoHint">A tensão será sugerida e deverá ser confirmada para a instalação real.</small>
+                </label>
+
+
+                <label class="full">
+                    Descrição
+                    <textarea id="descricao" rows="3" placeholder="Objetivo, tipo de instalação, observações do projeto..."></textarea>
+                </label>
+
+                <div class="full actions">
+                    <button type="submit">Salvar projeto</button>
+                </div>
+            </form>
+            <p id="projetoMsg" class="message"></p>
+        </div>
+
+        <div class="card">
+            <div class="section-title">
+                <div>
+                    <span class="eyebrow">Base cadastrada</span>
+                    <h3>Projetos</h3>
+                    <p>Selecione um projeto para trabalhar com seus cenários e dashboard.</p>
+                </div>
+                <button id="btnAtualizar" class="secondary">Atualizar</button>
+            </div>
+            <div id="projetos"></div>
+        </div>
+    </section>
+
+    <section id="cenariosView" class="view">
+        <div id="semProjetoCenario" class="empty-state card">
+            <h3>Selecione um projeto</h3>
+            <p>Abra a aba Projetos e selecione um projeto para cadastrar cenários.</p>
+        </div>
+
+        <div id="cenarioSection" class="card hidden">
+            <div class="section-title">
+                <div>
+                    <span class="eyebrow">Cenário operacional</span>
+                    <h3>Novo cenário</h3>
+                    <p id="projetoSelecionado"></p>
+                </div>
+                <button class="secondary ir-dashboard">Ver dashboard</button>
+            </div>
+
+            <div id="contextoProjeto" class="context-grid"></div>
+
+            <form id="cenarioForm" class="grid scenario-grid">
+                <label>
+                    Nome do cenário
+                    <input id="cenarioNome" required placeholder="Ex.: Alta geração / baixa carga">
+                </label>
+
+                <label>
+                    Geração FV (kW)
+                    <input id="geracaoFv" type="number" min="0" step="0.01">
+                </label>
+
+                <label>
+                    Irradiância do cenário (W/m²)
+
+                    <select id="modoIrradiancia">
+                        <option value="ATUAL">Usar irradiância atual</option>
+                        <option value="MANUAL">Informar manualmente</option>
+                    </select>
+
+                    <div class="inline-field">
+                        <input
+                                id="irradiancia"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                readonly
+                        >
+
+                        <button
+                                type="button"
+                                id="btnBuscarIrradiancia"
+                                class="secondary compact"
+                        >
+                            Atualizar
+                        </button>
+                    </div>
+
+                    <small class="field-hint" id="irradianciaFonte">
+                        Preenchida automaticamente conforme a referência de localidade do projeto.
+                    </small>
+                </label>
+
+                <label>
+                    Carga no cenário (kW)
+                    <input id="cenarioCarga" type="number" min="0" step="0.01">
+                </label>
+
+                <label>
+                    Nó / ponto da rede
+                    <input id="noRede" readonly>
+                    <small class="field-hint">Será fornecido pela configuração da rede/OpenDSS.</small>
+                </label>
+
+                <label>
+                    Fator de potência
+                    <input id="fatorPotencia" type="number" readonly>
+                    <small class="field-hint">Será preenchido pela configuração técnica da simulação.</small>
+                </label>
+
+                <label>
+                    Tensão inicial (pu)
+                    <input id="tensaoInicialPu" type="number" min="0" step="0.0001" readonly>
+                </label>
+
+                <label>
+                    Tensão resultado (V)
+                    <input id="tensaoResultadoV" type="number" min="0" step="0.01" readonly>
+                </label>
+
+                <label>
+                    Tensão resultado (pu)
+                    <input id="tensaoResultadoPu" type="number" min="0" step="0.0001" readonly>
+                </label>
+
+                <label>
+                    Origem do resultado
+                    <select id="origemResultado" disabled>
+                        <option value="PENDENTE" selected>Pendente</option>
+                        <option value="OPENDSS">OpenDSS</option>
+                        <option value="ML">ML</option>
+                    </select>
+                </label>
+
+                <label>
+                    Classificação de risco
+                    <select id="classificacaoRisco" disabled>
+                        <option value="" selected>Não classificado</option>
+                        <option value="BAIXO">Baixo</option>
+                        <option value="ATENCAO">Atenção</option>
+                        <option value="ALTO">Alto</option>
+                    </select>
+                </label>
+
+                <label class="full">
+                    Observação
+                    <textarea id="cenarioObservacao" rows="3" placeholder="Observações sobre esta condição de análise..."></textarea>
+                </label>
+
+                <div class="full actions">
+                    <button type="submit">Salvar cenário</button>
+                </div>
+            </form>
+            <p id="cenarioMsg" class="message"></p>
+        </div>
+
+        <div id="historicoSection" class="card hidden">
+            <div class="section-title">
+                <div>
+                    <span class="eyebrow">Histórico</span>
+                    <h3>Cenários do projeto</h3>
+                </div>
+                <button id="btnAtualizarCenarios" class="secondary">Atualizar</button>
+            </div>
+            <div id="cenarios"></div>
+
+            <div id="alternativasResultado" class="alternativas-container hidden">
+                <div class="section-title alternativas-header">
+                    <div>
+                        <span class="eyebrow">Etapa 7</span>
+                        <h3>Análise técnico-econômica</h3>
+                        <p id="alternativasCenarioNome">
+                            Selecione um cenário para avaliar alternativas.
+                        </p>
+                    </div>
+
+                    <button
+                            id="btnFecharAlternativas"
+                            type="button"
+                            class="secondary"
+                    >
+                        Fechar análise
+                    </button>
+                </div>
+
+                <div id="alternativasConteudo"></div>
+            </div>
+        </div>
+    </section>
+
+    <section id="dashboardView" class="view">
+
+        <div id="semProjetoDashboard" class="empty-state card">
+            <h3>Dashboard aguardando projeto</h3>
+            <p>
+                Selecione um projeto para visualizar os indicadores,
+                resultados técnicos e recomendações do DEGIA.
+            </p>
+        </div>
+
+        <div id="dashboardContent" class="hidden">
+
+            <div class="dashboard-header card">
+                <div>
+                    <span class="eyebrow">Dashboard executivo</span>
+                    <h3 id="dashProjetoNome">-</h3>
+                    <p id="dashProjetoMeta">-</p>
+                </div>
+
+                <button
+                        id="btnAtualizarDashboard"
+                        class="secondary"
+                        type="button"
+                >
+                    Atualizar dashboard
+                </button>
+            </div>
+
+            <div class="kpi-grid">
+
+                <article class="kpi-card">
+                    <span>Cenários analisados</span>
+                    <strong id="kpiTotalCenarios">0</strong>
+                    <small id="kpiComResultado">0 com resultado</small>
+                </article>
+
+                <article class="kpi-card">
+                    <span>Maior tensão</span>
+                    <strong id="kpiTensaoMax">—</strong>
+                    <small id="kpiTensaoMaxCenario">Sem resultado</small>
+                </article>
+
+                <article class="kpi-card">
+                    <span>Cenários em atenção</span>
+                    <strong id="kpiRiscoAtencao">0</strong>
+                    <small>classificação DEGIA</small>
+                </article>
+
+                <article class="kpi-card">
+                    <span>Erro médio da IA</span>
+                    <strong id="kpiErroMedioIA">—</strong>
+                    <small>OpenDSS × Random Forest</small>
+                </article>
+
+            </div>
+
+            <div class="dashboard-grid">
+
+                <article class="card panel-wide">
+                    <div class="section-title">
+                        <div>
+                            <span class="eyebrow">Validação do modelo</span>
+                            <h3>OpenDSS × Inteligência Artificial</h3>
+                            <p>
+                                Comparação entre a tensão obtida pela simulação elétrica
+                                e a tensão prevista pelo modelo Random Forest.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div
+                            id="comparacaoOpenDssMl"
+                            class="bar-chart"
+                    ></div>
+                </article>
+
+                <article class="card">
+                    <span class="eyebrow">Classificação</span>
+                    <h3>Distribuição de risco</h3>
+                    <p>
+                        Classificação interna utilizada pelo DEGIA
+                        para priorização dos cenários.
+                    </p>
+
+                    <div
+                            id="riscoResumo"
+                            class="risk-summary"
+                    ></div>
+                </article>
+
+            </div>
+
+            <article class="card">
+                <div class="section-title">
+                    <div>
+                        <span class="eyebrow">Diagnóstico técnico</span>
+                        <h3>Cenário mais crítico</h3>
+                        <p>
+                            Cenário com a maior tensão encontrada
+                            entre os resultados analisados.
+                        </p>
+                    </div>
+                </div>
+
+                <div id="cenarioCritico" class="context-grid">
+                    <div class="empty-inline">
+                        Aguardando resultados.
+                    </div>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="section-title">
+                    <div>
+                        <span class="eyebrow">Decisão técnico-econômica</span>
+                        <h3>Recomendação DEGIA</h3>
+                        <p>
+                            Avaliação automática das alternativas técnicas
+                            para o cenário mais crítico.
+                        </p>
+                    </div>
+                </div>
+
+                <div id="recomendacaoDashboard">
+                    <div class="empty-inline">
+                        A recomendação será calculada a partir
+                        do cenário mais crítico do projeto.
+                    </div>
+                </div>
+            </article>
+
+            <article class="card diagnostic">
+                <span class="eyebrow">Diagnóstico</span>
+                <h3>Resumo executivo</h3>
+                <div id="diagnosticoResumo"></div>
+            </article>
+
+            <article class="card">
+                <div class="section-title">
+                    <div>
+                        <span class="eyebrow">Resultados</span>
+                        <h3>Cenários analisados</h3>
+                        <p>
+                            Entradas operacionais, resultados OpenDSS,
+                            previsão da IA e classificação de risco.
+                        </p>
+                    </div>
+                </div>
+
+                <div id="dashboardTabela"></div>
+            </article>
+
+            <article class="card future-card">
+                <span class="eyebrow">Metodologia</span>
+                <h3>Protótipo acadêmico DEGIA</h3>
+                <p>
+                    Os resultados apresentados são utilizados para pré-análise
+                    técnico-econômica de projetos fotovoltaicos. As simulações
+                    e recomendações não substituem os estudos oficiais da
+                    distribuidora ou análises de engenharia aplicáveis ao
+                    projeto real.
+                </p>
+            </article>
+
+        </div>
+    </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{
+    "projeto": "DEGIA",
+    "versao_modelo": "2.0",
+    "algoritmo": "RandomForestRegressor",
+    "dataset": "degia_dataset_v2.csv",
+    "total_registros_treinamento": 360,
+    "features": [
+        "potencia_fv_efetiva_kw",
+        "carga_kw"
+    ],
+    "target": "tensao_resultado_pu",
+    "dominio_treinamento": {
+        "potencia_fv_efetiva_kw_min": 0.0,
+        "potencia_fv_efetiva_kw_max": 4000.0,
+        "carga_kw_min": 0.0,
+        "carga_kw_max": 2000.0
+    },
+    "simulacao": {
+        "rede": "IEEE13",
+        "no_rede": "675",
+        "fator_potencia": 1.0,
+        "origem_target": "OpenDSS"
+    },
+    "validacao_kfold": {
+        "folds": 5,
+        "mae_medio": 0.00066615,
+        "rmse_medio": 0.00111018,
+        "r2_medio": 0.901974,
+        "r2_desvio_padrao": 0.040484
+    },
+    "validacao_group_kfold": {
+        "folds": 5,
+        "grupo": "potencia_fv_efetiva_kw",
+        "mae_medio": 0.0004807,
+        "rmse_medio": 0.0008221,
+        "r2_medio": 0.9443,
+        "r2_desvio_padrao": 0.035383
+    },
+    "observacao": "Modelo final treinado com todos os 360 estados eletricos unicos do Dataset V2. As metricas registradas foram obtidas anteriormente por validacao cruzada e nao sobre os dados utilizados no treinamento final.",
+    "gerado_em": "2026-09-14T20:21:47.819731"
+}
