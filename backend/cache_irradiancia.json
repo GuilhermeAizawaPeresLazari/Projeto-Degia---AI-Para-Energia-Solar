@@ -1,0 +1,272 @@
+{
+    "AC": {
+        "latitude": -9.97472,
+        "longitude": -67.81,
+        "irradiancia_w_m2": 942.0,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Rio Branco/AC. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2025-10-24 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "AL": {
+        "latitude": -9.66583,
+        "longitude": -35.73528,
+        "irradiancia_w_m2": 1004.3,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Maceió/AL. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-01-17 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "AP": {
+        "latitude": 0.03889,
+        "longitude": -51.06639,
+        "irradiancia_w_m2": 951.2,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Macapá/AP. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-08-25 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "AM": {
+        "latitude": -3.10194,
+        "longitude": -60.025,
+        "irradiancia_w_m2": 937.2,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Manaus/AM. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-03-23 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "BA": {
+        "latitude": -12.97563,
+        "longitude": -38.49096,
+        "irradiancia_w_m2": 994.1,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Salvador/BA. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-02-05 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "CE": {
+        "latitude": -3.71722,
+        "longitude": -38.54306,
+        "irradiancia_w_m2": 992.5,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Fortaleza/CE. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2025-10-27 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "DF": {
+        "latitude": -15.77972,
+        "longitude": -47.92972,
+        "irradiancia_w_m2": 1020.4,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Brasília/DF. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2025-12-03 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "ES": {
+        "latitude": -20.31944,
+        "longitude": -40.33778,
+        "irradiancia_w_m2": 1020.5,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Vitória/ES. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-03-01 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "GO": {
+        "latitude": -16.67861,
+        "longitude": -49.25389,
+        "irradiancia_w_m2": 1009.1,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Goiânia/GO. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2025-11-29 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "MA": {
+        "latitude": -2.52972,
+        "longitude": -44.30278,
+        "irradiancia_w_m2": 948.4,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para São Luís/MA. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-02-20 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "MT": {
+        "latitude": -15.59611,
+        "longitude": -56.09667,
+        "irradiancia_w_m2": 984.4,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Cuiabá/MT. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-01-23 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "MS": {
+        "latitude": -20.44278,
+        "longitude": -54.64639,
+        "irradiancia_w_m2": 999.8,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Campo Grande/MS. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-02-14 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "MG": {
+        "latitude": -19.92083,
+        "longitude": -43.93778,
+        "irradiancia_w_m2": 1000.6,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Belo Horizonte/MG. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2025-10-17 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "PA": {
+        "latitude": -1.45583,
+        "longitude": -48.50444,
+        "irradiancia_w_m2": 927.5,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Belém/PA. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-09-09 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "PB": {
+        "latitude": -7.115,
+        "longitude": -34.86306,
+        "irradiancia_w_m2": 995.4,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para João Pessoa/PB. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-02-10 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "PR": {
+        "latitude": -25.42778,
+        "longitude": -49.27306,
+        "irradiancia_w_m2": 1027.8,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Curitiba/PR. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-01-01 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "PE": {
+        "latitude": -8.05389,
+        "longitude": -34.88111,
+        "irradiancia_w_m2": 992.5,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Recife/PE. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-01-03 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "PI": {
+        "latitude": -5.08917,
+        "longitude": -42.80194,
+        "irradiancia_w_m2": 983.9,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Teresina/PI. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-03-10 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "RJ": {
+        "latitude": -22.90642,
+        "longitude": -43.18223,
+        "irradiancia_w_m2": 1039.3,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Rio de Janeiro/RJ. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-01-15 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "RN": {
+        "latitude": -5.795,
+        "longitude": -35.20944,
+        "irradiancia_w_m2": 992.9,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Natal/RN. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2025-10-16 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "RS": {
+        "latitude": -30.03283,
+        "longitude": -51.23019,
+        "irradiancia_w_m2": 1049.0,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Porto Alegre/RS. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-01-22 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "RO": {
+        "latitude": -8.76194,
+        "longitude": -63.90389,
+        "irradiancia_w_m2": 924.2,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Porto Velho/RO. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-01-19 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "RR": {
+        "latitude": 2.81972,
+        "longitude": -60.67333,
+        "irradiancia_w_m2": 968.6,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Boa Vista/RR. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-02-07 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "SC": {
+        "latitude": -27.59667,
+        "longitude": -48.54917,
+        "irradiancia_w_m2": 1008.8,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Florianópolis/SC. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2025-12-28 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "SP": {
+        "latitude": -23.5475,
+        "longitude": -46.63611,
+        "irradiancia_w_m2": 1034.7,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para São Paulo/SP. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-02-15 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "SE": {
+        "latitude": -10.91111,
+        "longitude": -37.07167,
+        "irradiancia_w_m2": 1017.7,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Aracaju/SE. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2026-03-06 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    },
+    "TO": {
+        "latitude": -10.16745,
+        "longitude": -48.32766,
+        "irradiancia_w_m2": 985.5,
+        "fonte_irradiancia": "Open-Meteo Historical Weather API — shortwave_radiation_instant",
+        "observacao": "Fallback histórico DEGIA para Palmas/TO. Referência baseada no percentil 95 dos valores de irradiância das 12h entre 2025-09-19 e 2026-09-19. Registro histórico representativo: 2025-10-02 às 12h.",
+        "periodo_inicio": "2025-09-19",
+        "periodo_fim": "2026-09-19",
+        "metodo_fallback": "P95_IRRADIANCIA_12H"
+    }
+}

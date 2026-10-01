@@ -1,14 +1,6 @@
 const API = "http://127.0.0.1:8000/api";
 let projetoAtual = null;
 
-// Paginação independente das duas telas; os indicadores usam sempre todos os cenários.
-const PAGINA_TAMANHO = 10;
-const estadoTabelas = {
-    cenarios: {busca: "", pagina: 1, dados: [], projetoId: null},
-    dashboard: {busca: "", pagina: 1, dados: [], projetoId: null}
-};
-
-
 let ufsCache = [];
 
 const UFS_FALLBACK_FRONT = [
@@ -264,26 +256,33 @@ el("projetoForm").addEventListener("submit", async (event) => {
 async function buscarIrradianciaProjeto() {
     if (!projetoAtual) return;
 
-    if (el("modoIrradiancia").value === "MANUAL") {
-        return;
-    }
-
     const input = el("irradiancia");
     const fonte = el("irradianciaFonte");
     const botao = el("btnBuscarIrradiancia");
 
     input.value = "";
-    fonte.textContent = "Consultando irradiância da localidade...";
+    fonte.textContent = "Consultando irradiância de referência das 12h...";
     botao.disabled = true;
 
     try {
-        const dados = await api(`${API}/localidades/referencia?uf=${encodeURIComponent(projetoAtual.uf)}`);
+        const dados = await api(
+            `${API}/localidades/referencia?uf=${encodeURIComponent(projetoAtual.uf)}`
+        );
+
         if (dados.irradiancia_w_m2 == null) {
-            fonte.textContent = dados.observacao || "Irradiância indisponível.";
+            fonte.textContent =
+                dados.observacao || "Irradiância indisponível.";
             return;
         }
+
         input.value = Number(dados.irradiancia_w_m2).toFixed(1);
-        fonte.textContent = `${dados.fonte_irradiancia}. ${dados.observacao || ""}`;
+
+        fonte.textContent =
+            "Open-Meteo Historical Weather API — média anual de irradiância da localidade, " +
+            "com referência atualizada até o dia anterior. " +
+            "Valor utilizado como referência para a simulação; " +
+            "não representa medição no endereço específico do projeto.";
+
     } catch (erro) {
         fonte.textContent = erro.message;
     } finally {
@@ -291,58 +290,65 @@ async function buscarIrradianciaProjeto() {
     }
 }
 
-el("btnBuscarIrradiancia").addEventListener("click", buscarIrradianciaProjeto);
-
-el("modoIrradiancia").addEventListener("change", async () => {
-    const modo = el("modoIrradiancia").value;
-    const input = el("irradiancia");
-    const botao = el("btnBuscarIrradiancia");
-    const fonte = el("irradianciaFonte");
-
-    if (modo === "MANUAL") {
-        input.readOnly = false;
-        input.value = "";
-        botao.disabled = true;
-
-        fonte.textContent =
-            "Modo manual: informe a irradiância desejada para o cenário.";
-
-        input.focus();
-        return;
-    }
-
-    input.readOnly = true;
-    botao.disabled = false;
-
-    fonte.textContent =
-        "Consultando irradiância atual...";
-
-    await buscarIrradianciaProjeto();
-});
+el("btnBuscarIrradiancia").addEventListener(
+    "click",
+    buscarIrradianciaProjeto
+);
 
 el("cenarioForm").addEventListener("submit", async (event) => {
     event.preventDefault();
 
     if (!projetoAtual) return;
 
-    const irradiancia = numeroOuNull(el("irradiancia").value);
-
-    if (irradiancia === null) {
-        el("cenarioMsg").textContent =
-            "Informe a irradiância para executar a simulação OpenDSS.";
-        return;
-    }
-
-    const dados = {
-        nome: el("cenarioNome").value.trim(),
-        geracao_fv_kw: numeroOuNull(el("geracaoFv").value),
-        irradiancia_w_m2: irradiancia,
-        carga_kw: numeroOuNull(el("cenarioCarga").value),
-        observacao: el("cenarioObservacao").value.trim() || null,
-    };
-
     try {
-        el("cenarioMsg").textContent = "Executando simulação OpenDSS...";
+        // Verifica se o projeto já possui o único cenário permitido
+        const cenariosExistentes = await api(
+            `${API}/projetos/${projetoAtual.id}/cenarios`
+        );
+
+        if (cenariosExistentes.length > 0) {
+            const cenario = cenariosExistentes[0];
+
+            el("tensaoInicialPu").value =
+                cenario.tensao_inicial_pu == null
+                    ? ""
+                    : Number(cenario.tensao_inicial_pu).toFixed(6);
+
+            el("tensaoResultadoPu").value =
+                cenario.tensao_resultado_pu == null
+                    ? ""
+                    : Number(cenario.tensao_resultado_pu).toFixed(6);
+
+            el("tensaoResultadoV").value =
+                cenario.tensao_resultado_v ?? "";
+
+            el("origemResultado").value =
+                cenario.origem_resultado || "OPENDSS";
+
+            el("classificacaoRisco").value =
+                (cenario.classificacao_risco || "")
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .toUpperCase();
+
+            el("cenarioMsg").textContent =
+                `Este projeto já possui o cenário #${cenario.id}. ` +
+                `O cenário existente foi carregado.`;
+
+            await carregarCenarios();
+            await carregarDashboard();
+
+            return;
+        }
+
+        // Se ainda não existe cenário, cria normalmente
+        const dados = {
+            nome: "Cenário média anual de irradiância da localidade",
+            observacao: el("cenarioObservacao").value.trim() || null,
+        };
+
+        el("cenarioMsg").textContent =
+            "Executando simulação OpenDSS...";
 
         const cenario = await api(
             `${API}/projetos/${projetoAtual.id}/cenarios`,
@@ -372,7 +378,10 @@ el("cenarioForm").addEventListener("submit", async (event) => {
             cenario.origem_resultado || "OPENDSS";
 
         el("classificacaoRisco").value =
-            cenario.classificacao_risco || "";
+            (cenario.classificacao_risco || "")
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase();
 
         el("cenarioMsg").textContent =
             `Cenário #${cenario.id} simulado e salvo com sucesso. ` +
@@ -380,9 +389,6 @@ el("cenarioForm").addEventListener("submit", async (event) => {
             `${formatarNumero(cenario.tensao_resultado_pu, 4)} pu. ` +
             `Origem: ${cenario.origem_resultado}.`;
 
-        el("cenarioNome").value = "";
-        el("geracaoFv").value = "";
-        el("cenarioCarga").value = "";
         el("cenarioObservacao").value = "";
 
         await carregarCenarios();
@@ -444,6 +450,8 @@ function renderContextoProjeto(projeto) {
     `;
     el("noRede").value = projeto.no_rede_referencia || "675";
     el("fatorPotencia").value = projeto.fator_potencia ?? 1;
+    el("geracaoFv").value = projeto.potencia_fv_kwp;
+    el("cenarioCarga").value = projeto.carga_local_kw;
 }
 
 function selecionarProjeto(projeto) {
@@ -455,105 +463,70 @@ function selecionarProjeto(projeto) {
     el("dashboardContent").classList.remove("hidden");
     el("projetoSelecionado").textContent = `Projeto #${projeto.id} — ${projeto.nome}`;
     renderContextoProjeto(projeto);
+    buscarIrradianciaProjeto();
 
     document.querySelectorAll(".project").forEach((item) => {
         item.classList.toggle("selected", Number(item.dataset.id) === projeto.id);
     });
 
-    buscarIrradianciaProjeto();
     carregarCenarios();
     carregarDashboard();
 }
 
 async function carregarCenarios() {
     if (!projetoAtual) return;
+
     const projetoId = projetoAtual.id;
+
     try {
-        const cenarios = await api(`${API}/projetos/${projetoId}/cenarios`);
+        const cenarios = await api(
+            `${API}/projetos/${projetoId}/cenarios`
+        );
+
         if (projetoAtual?.id !== projetoId) return;
-        atualizarDadosTabela("cenarios", cenarios, projetoId);
-        if (!cenarios.length) el("alternativasResultado")?.classList.add("hidden");
-    } catch (erro) {
-        el("cenarios").innerHTML = `<p class="error">${escapeHtml(erro.message)}</p>`;
-    }
-}
 
-// Renderiza somente dez linhas; a busca não modifica o dataset nem os KPIs.
-function atualizarDadosTabela(tela, dados, projetoId) {
-    const estado = estadoTabelas[tela];
-    if (estado.projetoId !== projetoId) {
-        estado.busca = "";
-        estado.pagina = 1;
-        estado.projetoId = projetoId;
-    }
-    estado.dados = dados;
-    renderTabelaPaginada(tela);
-}
+        const container = el("cenarios");
 
-function renderTabelaPaginada(tela, preservarFoco = false) {
-    const estado = estadoTabelas[tela];
-    const container = el(tela === "cenarios" ? "cenarios" : "dashboardTabela");
-    const busca = estado.busca.trim().toLocaleLowerCase("pt-BR");
-    const filtrados = estado.dados.filter((c) =>
-        String(c.nome ?? "").toLocaleLowerCase("pt-BR").includes(busca)
-    );
-    const paginas = Math.max(1, Math.ceil(filtrados.length / PAGINA_TAMANHO));
-    estado.pagina = Math.min(Math.max(1, estado.pagina), paginas);
-    const inicio = (estado.pagina - 1) * PAGINA_TAMANHO;
-    const visiveis = filtrados.slice(inicio, inicio + PAGINA_TAMANHO);
-    const buscaId = `busca-${tela}`;
+        if (!cenarios.length) {
+            container.innerHTML = `
+                <div class="empty-inline">
+                    Este projeto ainda não possui cenário.
+                </div>
+            `;
 
-    // Não recria o campo durante a digitação: mantém foco, cursor e IME.
-    if (!preservarFoco || !el(buscaId)) {
-        container.innerHTML = `
-            <div class="degia-table-tools" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:16px;">
-                <label for="${buscaId}"><strong>Buscar cenário</strong></label>
-                <input id="${buscaId}" type="search" placeholder="Digite o nome do cenário" aria-label="Buscar cenário pelo nome" style="flex:1;min-width:200px;max-width:420px;" value="${escapeHtml(estado.busca)}">
-                <span id="contagem-${tela}" aria-live="polite"></span>
-            </div>
-            <div id="conteudo-tabela-${tela}"></div>
-            <div id="paginacao-${tela}" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:16px;"></div>
-        `;
-        el(buscaId).addEventListener("input", (event) => {
-            estado.busca = event.target.value;
-            estado.pagina = 1;
-            renderTabelaPaginada(tela, true);
-        });
-    }
+            el("alternativasResultado")?.classList.add("hidden");
+            return;
+        }
 
-    el(`contagem-${tela}`).textContent =
-        `${filtrados.length} de ${estado.dados.length} cenário(s)`;
-    el(`conteudo-tabela-${tela}`).innerHTML = visiveis.length
-        ? tabelaCenarios(visiveis, true)
-        : '<div class="empty-inline">Nenhum cenário encontrado para esta busca.</div>';
+        // O DEGIA possui apenas um cenário por projeto.
+        container.innerHTML = tabelaCenarios(
+            [cenarios[0]],
+            true
+        );
 
-    const nav = el(`paginacao-${tela}`);
-    nav.innerHTML = `
-        <span>Exibindo ${filtrados.length ? inicio + 1 : 0}–${Math.min(inicio + PAGINA_TAMANHO, filtrados.length)} de ${filtrados.length}</span>
-        <div style="display:flex;align-items:center;gap:10px;">
-            <button type="button" class="secondary compact" data-pagina="anterior" ${estado.pagina === 1 ? "disabled" : ""}>Anterior</button>
-            <span aria-live="polite">Página ${estado.pagina} de ${paginas}</span>
-            <button type="button" class="secondary compact" data-pagina="proxima" ${estado.pagina === paginas ? "disabled" : ""}>Próxima</button>
-        </div>
-    `;
-    nav.querySelectorAll("button[data-pagina]").forEach((botao) => {
-        botao.addEventListener("click", () => {
-            estado.pagina += botao.dataset.pagina === "proxima" ? 1 : -1;
-            renderTabelaPaginada(tela, true);
-        });
-    });
+        container
+            .querySelectorAll(".btn-avaliar-alternativas")
+            .forEach((botao) => {
+                botao.addEventListener("click", () => {
+                    const cenario = cenarios.find(
+                        (c) => c.id === Number(botao.dataset.cenarioId)
+                    );
 
-    el(`conteudo-tabela-${tela}`)
-        .querySelectorAll(".btn-avaliar-alternativas")
-        .forEach((botao) => {
-            botao.addEventListener("click", () => {
-                const cenario = estado.dados.find((c) => c.id === Number(botao.dataset.cenarioId));
-                if (!cenario) return;
-                if (tela === "dashboard") mostrarView("cenariosView");
-                avaliarAlternativasCenario(cenario, botao);
+                    if (!cenario) return;
+
+                    avaliarAlternativasCenario(
+                        cenario,
+                        botao
+                    );
+                });
             });
-        });
+
+    } catch (erro) {
+        el("cenarios").innerHTML =
+            `<p class="error">${escapeHtml(erro.message)}</p>`;
+    }
 }
+
 
 async function avaliarAlternativasCenario(cenario, botao) {
 
@@ -601,7 +574,9 @@ async function avaliarAlternativasCenario(cenario, botao) {
 
             fator_potencia: Number(
                 cenario.fator_potencia ?? 1
-            )
+            ),
+
+            uf: projetoAtual.uf
         };
 
         const resultado = await api(
@@ -683,13 +658,13 @@ async function avaliarAlternativasCenario(cenario, botao) {
                         </td>
 
                         <td>
-                            ${
-                    alternativa.energia_afetada_kwh == null
+                        
+                    ${alternativa.potencia_fv_kw == null
                         ? "—"
                         : `${formatarNumero(
-                            alternativa.energia_afetada_kwh,
+                            alternativa.potencia_fv_kw,
                             2
-                        )} kWh`
+                        )} kW`
                 }
                         </td>
                     </tr>
@@ -757,7 +732,7 @@ async function avaliarAlternativasCenario(cenario, botao) {
 
                             <br>
 
-                            Custo estimado:
+                            Impacto financeiro mensal:
                             <strong>
                                 ${formatarMoeda(
                     melhor.custo_estimado_r
@@ -782,7 +757,7 @@ async function avaliarAlternativasCenario(cenario, botao) {
                 <p>
                     Comparação das alternativas simuladas pelo DEGIA,
                     priorizando soluções que reduzem o risco técnico e,
-                    em seguida, o custo estimado.
+                    em seguida, o menor impacto financeiro estimado.
                 </p>
 
                 <div class="table-wrap">
@@ -796,8 +771,8 @@ async function avaliarAlternativasCenario(cenario, botao) {
                                 <th>Tensão</th>
                                 <th>Risco</th>
                                 <th>Resolve?</th>
-                                <th>Custo estimado</th>
-                                <th>Energia afetada</th>
+                                <th>Impacto financeiro mensal</th>
+                                <th>Nova potência FV</th>
                             </tr>
                         </thead>
 
@@ -827,14 +802,33 @@ async function avaliarAlternativasCenario(cenario, botao) {
         )}/kWh
                 </strong>
 
-                <br>
+               <br>
 
-                Horizonte da análise:
+                Produção FV média mensal de referência:
                 <strong>
                     ${formatarNumero(
-            analiseEconomica.horizonte_analise_h,
-            1
-        )} hora(s)
+                            analiseEconomica.producao_media_mensal_kwh_kwp,
+                            2
+                        )} kWh/kWp/mês
+                </strong>
+                
+                <br>
+                
+                Perdas consideradas no PVGIS:
+                <strong>
+                    ${formatarNumero(
+                            analiseEconomica.perdas_pvgis_percentual,
+                            1
+                        )}%
+                </strong>
+                
+                <br>
+                
+                UF de referência:
+                <strong>
+                    ${escapeHtml(
+                            analiseEconomica.uf_referencia || "—"
+                        )}
                 </strong>
 
                 <br>
@@ -1021,9 +1015,6 @@ async function renderDashboard(resumo) {
         `${formatarNumero(p.potencia_fv_kwp, 2)} kWp · ` +
         `${formatarNumero(p.tensao_referencia_v, 0)} V`;
 
-    el("kpiTotalCenarios").textContent = resumo.total_cenarios ?? cenarios.length;
-    el("kpiComResultado").textContent =
-        `${resumo.cenarios_com_resultado ?? 0} com resultado`;
 
     el("kpiTensaoMax").textContent =
         resumo.tensao_max_pu == null
@@ -1033,29 +1024,55 @@ async function renderDashboard(resumo) {
     el("kpiTensaoMaxCenario").textContent =
         resumo.cenario_maior_tensao?.nome || "Sem resultado";
 
-    el("kpiRiscoAtencao").textContent = resumo.risco_atencao ?? 0;
+    const cenarioAtual = cenarios[0] || null;
 
-    const erros = cenarios
-        .map((c) => numeroOuNull(c.erro_percentual_ml))
-        .filter((v) => v !== null && Number.isFinite(v));
+    if (cenarioAtual) {
+        const risco = (cenarioAtual.classificacao_risco || "").toUpperCase();
 
-    const erroMedio = erros.length
-        ? erros.reduce((soma, v) => soma + v, 0) / erros.length
-        : null;
+        el("kpiStatusCenario").innerHTML = badgeRisco(risco);
+
+        if (risco === "BAIXO") {
+            el("kpiStatusDescricao").textContent =
+                "Sem necessidade de alteração";
+        } else if (risco.startsWith("ATEN")) {
+            el("kpiStatusDescricao").textContent =
+                "Alteração recomendada";
+        } else if (risco === "ALTO") {
+            el("kpiStatusDescricao").textContent =
+                "Alteração necessária";
+        } else {
+            el("kpiStatusDescricao").textContent =
+                "Aguardando classificação";
+        }
+    } else {
+        el("kpiStatusCenario").textContent = "—";
+        el("kpiStatusDescricao").textContent =
+            "Aguardando resultado";
+    }
+
+    const erroIA =
+        cenarioAtual?.erro_percentual_ml == null
+            ? null
+            : Number(cenarioAtual.erro_percentual_ml);
 
     el("kpiErroMedioIA").textContent =
-        erroMedio == null ? "—" : `${formatarNumero(erroMedio, 4)}%`;
+        erroIA == null ? "—" : `${formatarNumero(erroIA, 4)}%`;
+
     el("kpiErroMedioIA").title =
-        "Erro médio observado nos cenários do projeto; não é acurácia em dados independentes.";
+        "Erro percentual observado entre OpenDSS e IA para o cenário do projeto; não é acurácia em dados independentes.";
 
     renderComparacaoOpenDssMl(cenarios);
-    renderRisco(resumo);
 
     const critico = obterCenarioCritico(cenarios);
     renderCenarioCritico(critico);
-    renderDiagnosticoExecutivo(resumo, erroMedio, critico);
+    renderDiagnosticoExecutivo(resumo, erroIA, critico);
 
-    atualizarDadosTabela("dashboard", cenarios, p.id);
+    const cenario = cenarios[0] || null;
+
+    el("dashboardTabela").innerHTML = cenario
+        ? tabelaCenarios([cenario], true)
+        : '<div class="empty-inline">Este projeto ainda não possui cenário.</div>';
+
     await renderRecomendacaoDashboard(critico);
 }
 
@@ -1074,16 +1091,10 @@ function obterCenarioCritico(cenarios) {
 function renderComparacaoOpenDssMl(cenarios) {
     const container = el("comparacaoOpenDssMl");
 
-    const lista = cenarios
-        .filter((c) =>
-            c.tensao_resultado_pu != null &&
-            c.tensao_prevista_ml_pu != null
-        )
-        .sort((a, b) =>
-            Number(b.tensao_resultado_pu) -
-            Number(a.tensao_resultado_pu)
-        )
-        .slice(0, 10);
+    const lista = cenarios.filter((c) =>
+        c.tensao_resultado_pu != null &&
+        c.tensao_prevista_ml_pu != null
+    );
 
     if (!lista.length) {
         container.innerHTML =
@@ -1104,11 +1115,6 @@ function renderComparacaoOpenDssMl(cenarios) {
     const faixa = fim - inicio || 1;
 
     container.innerHTML = `
-        <div class="diagnostic-note" style="margin-bottom:16px;">
-            Exibindo os 10 cenários de maior tensão para manter
-            a leitura executiva do dashboard.
-        </div>
-
         ${lista.map((c) => {
         const odss = Number(c.tensao_resultado_pu);
         const ia = Number(c.tensao_prevista_ml_pu);
@@ -1173,7 +1179,7 @@ function renderCenarioCritico(c) {
 
     if (!c) {
         container.innerHTML =
-            '<div class="empty-inline">Ainda não existem resultados para identificar o cenário mais crítico.</div>';
+            '<div class="empty-inline">Ainda não existe resultado para o cenário do projeto.</div>';
         return;
     }
 
@@ -1212,25 +1218,27 @@ async function renderRecomendacaoDashboard(cenario) {
 
     if (tensaoAtual <= 1.05) {
         container.innerHTML = `
-            <div class="diagnostic-note">
-                <strong>Nenhuma intervenção é necessária no cenário crítico.</strong>
-                <br><br>
-                Maior tensão: <strong>${formatarNumero(tensaoAtual, 4)} pu</strong>
-                — ${badgeRisco(cenario.classificacao_risco)}
-            </div>
-        `;
+        <div class="diagnostic-note">
+            <strong>Nenhuma intervenção é necessária para o cenário do projeto.</strong>
+            <br><br>
+            Tensão do cenário:
+            <strong>${formatarNumero(tensaoAtual, 4)} pu</strong>
+            — ${badgeRisco(cenario.classificacao_risco)}
+        </div>
+    `;
         return;
     }
 
     container.innerHTML =
-        '<div class="empty-inline">Avaliando automaticamente as alternativas para o cenário mais crítico...</div>';
+    '<div class="empty-inline">Avaliando automaticamente as alternativas para o cenário do projeto...</div>';
 
     const dados = {
         no_rede: cenario.no_rede || "675",
         potencia_fv_kw: Number(cenario.geracao_fv_kw || 0),
         irradiancia_w_m2: Number(cenario.irradiancia_w_m2 || 0),
         carga_kw: Number(cenario.carga_kw || 0),
-        fator_potencia: Number(cenario.fator_potencia ?? 1)
+        fator_potencia: Number(cenario.fator_potencia ?? 1),
+        uf: projetoAtual.uf
     };
 
     try {
@@ -1281,7 +1289,7 @@ async function renderRecomendacaoDashboard(cenario) {
                 Redução de tensão:
                 <strong>${formatarNumero(reducao, 4)} pu</strong><br>
 
-                Custo estimado:
+                Impacto financeiro mensal:
                 <strong>${formatarMoeda(melhor.custo_estimado_r)}</strong>
 
                 <br><br>
@@ -1297,42 +1305,48 @@ async function renderRecomendacaoDashboard(cenario) {
     }
 }
 
-function renderDiagnosticoExecutivo(resumo, erroMedio, critico) {
-    if (Number(resumo.total_cenarios || 0) === 0) {
+function renderDiagnosticoExecutivo(resumo, erroIA, cenario) {
+    if (!cenario) {
         el("diagnosticoResumo").innerHTML =
-            "<p>O projeto ainda não possui cenários.</p>";
+            "<p>O projeto ainda não possui cenário com resultado.</p>";
         return;
     }
 
-    if (Number(resumo.cenarios_com_resultado || 0) === 0) {
-        el("diagnosticoResumo").innerHTML =
-            "<p>Existem cenários cadastrados, mas ainda não há resultados suficientes para o diagnóstico executivo.</p>";
-        return;
-    }
+    const risco = (cenario.classificacao_risco || "").toUpperCase();
 
-    const percentualAtencao =
-        (Number(resumo.risco_atencao || 0) /
-            Math.max(1, Number(resumo.cenarios_com_resultado || 0))) * 100;
+    let textoRisco;
+
+    if (risco === "BAIXO") {
+        textoRisco =
+            "O cenário apresenta baixo risco de sobretensão e não indica necessidade de alteração.";
+    } else if (risco.startsWith("ATEN")) {
+        textoRisco =
+            "O cenário encontra-se em atenção e recomenda a avaliação de alternativas técnicas.";
+    } else if (risco === "ALTO") {
+        textoRisco =
+            "O cenário apresenta risco alto de sobretensão e requer avaliação de alternativas técnicas.";
+    } else {
+        textoRisco =
+            "O cenário ainda não possui classificação de risco definida.";
+    }
 
     el("diagnosticoResumo").innerHTML = `
         <p>
-            Foram analisados <strong>${resumo.cenarios_com_resultado}</strong>
-            cenário(s) com resultado. A maior tensão encontrada foi
-            <strong>${formatarNumero(resumo.tensao_max_pu, 4)} pu</strong>
-            ${critico ? `no cenário <strong>${escapeHtml(critico.nome)}</strong>` : ""}.
+            O cenário do projeto apresentou tensão de
+            <strong>${formatarNumero(cenario.tensao_resultado_pu, 4)} pu</strong>,
+            com classificação
+            ${badgeRisco(cenario.classificacao_risco)}.
         </p>
 
         <p>
-            <strong>${resumo.risco_atencao ?? 0}</strong> cenário(s)
-            estão em atenção (${formatarNumero(percentualAtencao, 1)}%)
-            e <strong>${resumo.risco_alto ?? 0}</strong> estão em risco alto.
+            ${textoRisco}
         </p>
 
         <p>
             ${
-        erroMedio == null
-            ? "Ainda não há dados suficientes para calcular o erro médio da IA."
-            : `O erro percentual médio observado entre OpenDSS e Random Forest nos cenários deste projeto é de <strong>${formatarNumero(erroMedio, 4)}%</strong>. Esse valor não representa acurácia em dados independentes.`
+        erroIA == null
+            ? "Ainda não há dados suficientes para calcular o erro da IA."
+            : `O erro percentual observado entre OpenDSS e Random Forest para este cenário é de <strong>${formatarNumero(erroIA, 4)}%</strong>. Esse valor não representa acurácia em dados independentes.`
     }
         </p>
 

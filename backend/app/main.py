@@ -1,6 +1,10 @@
 import csv
 import io
 import json
+import math
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+from pathlib import Path
 
 from app.economico import aplicar_analise_economica
 from app.alternativas import avaliar_alternativas
@@ -34,6 +38,7 @@ class AlternativasRequest(BaseModel):
     irradiancia_w_m2: float
     carga_kw: float
     fator_potencia: float = 1.0
+    uf: str
 
 class PrevisaoMLRequest(BaseModel):
     potencia_fv_kw: float
@@ -51,6 +56,7 @@ class SimulacaoRequest(BaseModel):
     no_rede: str
     potencia_fv_kw: float
     irradiancia_w_m2: float
+    carga_kw: float = 0
     fator_potencia: float = 1.0
 
 # create_all cria tabelas novas, mas não altera tabelas antigas.
@@ -140,6 +146,48 @@ CAPITAIS_UF = {
     "SC":"Florianópolis","SP":"São Paulo","SE":"Aracaju","TO":"Palmas"
 }
 
+# ============================================================
+# CACHE DE IRRADIÂNCIA
+# ============================================================
+# Guarda o último resultado válido obtido da Open-Meteo
+# durante a execução atual do backend.
+
+# ============================================================
+# CACHE / FALLBACK DE IRRADIÂNCIA
+# ============================================================
+
+CAMINHO_CACHE_IRRADIANCIA = (
+    Path(__file__).resolve().parent.parent
+    / "cache_irradiancia.json"
+)
+
+
+def carregar_cache_irradiancia():
+    try:
+        with open(
+            CAMINHO_CACHE_IRRADIANCIA,
+            "r",
+            encoding="utf-8"
+        ) as arquivo:
+            dados = json.load(arquivo)
+
+        print(
+            f"[DEGIA] Cache de irradiância carregado: "
+            f"{len(dados)} UFs."
+        )
+
+        return dados
+
+    except Exception as erro:
+        print(
+            f"[DEGIA] ATENÇÃO: não foi possível carregar "
+            f"cache_irradiancia.json: {erro}"
+        )
+
+        return {}
+
+
+CACHE_IRRADIANCIA = carregar_cache_irradiancia()
 
 REDES = {
     "IEEE13": {
@@ -163,54 +211,132 @@ def requisitar_json(url: str, timeout: int = 8):
         return json.loads(resposta.read().decode("utf-8"))
 
 
-def buscar_irradiancia_atual(municipio: str, uf: str):
-    """Busca geocodificação e radiação solar atual via Open-Meteo.
+def buscar_irradiancia_12h_ultimo_dia(municipio: str, uf: str):
+    """Obtém o valor modelado das 12h locais do dia mais recente disponível."""
+    geo_params = urlencode({
+        "name": municipio,
+        "count": 10,
+        "language": "pt",
+        "format": "json",
+        "countryCode": "BR",
+    })
+    geo = requisitar_json(
+        f"https://geocoding-api.open-meteo.com/v1/search?{geo_params}",
+        timeout=12,
+    )
+    nome_uf = next(
+        (item["nome"] for item in UFS_FALLBACK if item["sigla"] == uf.upper()),
+        None,
+    )
+    escolhido = next(
+        (
+            item for item in (geo.get("results") or [])
+            if item.get("country_code") == "BR"
+            and (item.get("admin1") or "").casefold() == (nome_uf or "").casefold()
+        ),
+        None,
+    )
+    if escolhido is None:
+        raise ValueError(f"Não foi possível localizar {municipio}/{uf} com segurança.")
 
-    O valor retornado é meteorológico e momentâneo. Ele NÃO é limite regulatório,
-    nem substitui uma base solar de projeto. Serve para automatizar o MVP enquanto
-    a estratégia definitiva de irradiância do dataset é definida.
-    """
+    latitude = escolhido["latitude"]
+    longitude = escolhido["longitude"]
+    fuso = escolhido.get("timezone")
+    if not fuso:
+        raise ValueError("A localização não retornou um fuso horário.")
+
+    hoje_local = datetime.now(ZoneInfo(fuso)).date()
+    inicio = hoje_local - timedelta(days=14)
+    fim = hoje_local - timedelta(days=1)
+    params = urlencode({
+        "latitude": latitude,
+        "longitude": longitude,
+        "start_date": inicio.isoformat(),
+        "end_date": fim.isoformat(),
+        "hourly": "shortwave_radiation_instant",
+        "timezone": fuso,
+    })
+    historico = requisitar_json(
+        f"https://archive-api.open-meteo.com/v1/archive?{params}",
+        timeout=30,
+    )
+    hourly = historico.get("hourly") or {}
+    horarios = hourly.get("time") or []
+    valores = hourly.get("shortwave_radiation_instant") or []
+    registros_12h = []
+    for horario, valor in zip(horarios, valores):
+        if not horario.endswith("T12:00") or valor is None:
+            continue
+        try:
+            numero = float(valor)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(numero) and numero >= 0:
+            registros_12h.append((horario, numero))
+
+    if not registros_12h:
+        raise ValueError("Não há irradiância válida às 12h nos últimos 14 dias.")
+    horario_utilizado, irradiancia = max(registros_12h, key=lambda registro: registro[0])
+    return {
+        "latitude": latitude,
+        "longitude": longitude,
+        "irradiancia_w_m2": round(irradiancia, 2),
+        "fonte_irradiancia": (
+            "Open-Meteo Historical Weather API — shortwave_radiation_instant"
+        ),
+        "observacao": (
+            f"Irradiância modelada das 12h de {horario_utilizado[:10]} "
+            f"({fuso}), para {municipio}/{uf}. "
+            "Último dia com dado válido na janela consultada; "
+            "não é medição no endereço do projeto nem pico garantido."
+        ),
+    }
+
+def obter_referencia_irradiancia(uf: str):
+    sigla = uf.strip().upper()
+    municipio = CAPITAIS_UF.get(sigla)
+
+    if not municipio:
+        raise ValueError("UF inválida.")
+
     try:
-        geo_params = urlencode({
-            "name": municipio,
-            "count": 10,
-            "language": "pt",
-            "format": "json",
-            "countryCode": "BR",
-        })
-        geo = requisitar_json(f"https://geocoding-api.open-meteo.com/v1/search?{geo_params}")
-        resultados = geo.get("results") or []
-        if not resultados:
-            return None, None, None
+        referencia = buscar_irradiancia_12h_ultimo_dia(
+            municipio,
+            sigla
+        )
 
-        nome_uf = next((item["nome"] for item in UFS_FALLBACK if item["sigla"] == uf.upper()), None)
-        escolhido = None
-        if nome_uf:
-            for item in resultados:
-                admin1 = (item.get("admin1") or "").casefold()
-                if item.get("country_code") == "BR" and admin1 == nome_uf.casefold():
-                    escolhido = item
-                    break
-        if escolhido is None:
-            escolhido = next((item for item in resultados if item.get("country_code") == "BR"), resultados[0])
+        # Guarda o último resultado válido
+        CACHE_IRRADIANCIA[sigla] = referencia
 
-        latitude = escolhido.get("latitude")
-        longitude = escolhido.get("longitude")
-        if latitude is None or longitude is None:
-            return None, None, None
+        return {
+            "uf": sigla,
+            "municipio": municipio,
+            **referencia,
+            "cache": False
+        }
 
-        meteo_params = urlencode({
-            "latitude": latitude,
-            "longitude": longitude,
-            "current": "shortwave_radiation",
-            "timezone": "auto",
-        })
-        meteo = requisitar_json(f"https://api.open-meteo.com/v1/forecast?{meteo_params}")
-        irradiancia = (meteo.get("current") or {}).get("shortwave_radiation")
-        return latitude, longitude, irradiancia
-    except Exception:
-        return None, None, None
+    except Exception as erro:
+        referencia_cache = CACHE_IRRADIANCIA.get(sigla)
 
+        if referencia_cache:
+            return {
+                "uf": sigla,
+                "municipio": municipio,
+                **referencia_cache,
+                "cache": True,
+                "observacao": (
+                    referencia_cache.get("observacao", "")
+                    + " Consulta meteorológica online indisponível. "
+                    + "Foi utilizada a referência histórica local "
+                    + "de contingência do DEGIA."
+                )
+            }
+
+        raise RuntimeError(
+            "Não foi possível consultar a irradiância "
+            "e ainda não existe valor em cache para esta UF. "
+            f"Detalhe: {erro}"
+        ) from erro
 
 @app.get("/")
 def inicio():
@@ -351,36 +477,25 @@ def listar_nos_rede(rede_codigo: str):
         "observacao": "Os nós pertencem ao modelo elétrico simulado; não são inferidos pela UF do projeto.",
     }
 
-
-@app.get("/api/localidades/referencia", response_model=LocalidadeReferencia)
+@app.get("/api/localidades/referencia")
 def referencia_localidade(
     uf: str = Query(min_length=2, max_length=2),
 ):
-    sigla = uf.upper()
-    municipio = CAPITAIS_UF.get(sigla)
-    if not municipio:
-        raise HTTPException(status_code=400, detail="UF inválida.")
-    latitude, longitude, irradiancia = buscar_irradiancia_atual(municipio, sigla)
-    if irradiancia is None:
-        return {
-            "uf": sigla,
-            "municipio": municipio,
-            "latitude": latitude,
-            "longitude": longitude,
-            "irradiancia_w_m2": None,
-            "fonte_irradiancia": "indisponível",
-            "observacao": "Não foi possível consultar a irradiância agora. O cenário pode ser salvo sem esse valor e atualizado depois.",
-        }
+    try:
+        return obter_referencia_irradiancia(uf)
 
-    return {
-        "uf": sigla,
-        "municipio": municipio,
-        "latitude": latitude,
-        "longitude": longitude,
-        "irradiancia_w_m2": irradiancia,
-        "fonte_irradiancia": "Open-Meteo - shortwave_radiation atual",
-        "observacao": f"Referência meteorológica momentânea usando {municipio} como ponto representativo de {sigla}; não é irradiância exata do endereço nem valor normativo/de projeto.",
-    }
+    except ValueError as erro:
+        raise HTTPException(
+            status_code=400,
+            detail=str(erro)
+        ) from erro
+
+    except Exception as erro:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Referência de irradiância indisponível: {erro}"
+        ) from erro
+
 
 
 @app.post("/api/projetos", response_model=ProjetoResponse, status_code=201)
@@ -474,84 +589,97 @@ def executar_simulacao_cenario(
 async def criar_cenario(
     projeto_id: int,
     dados: CenarioCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     projeto = obter_projeto_ou_404(projeto_id, db)
 
-    if dados.irradiancia_w_m2 is None:
+    # PostgreSQL: serializa tentativas simultâneas para o mesmo projeto.
+    # A trava é liberada automaticamente ao encerrar a transação.
+    db.execute(
+        text("SELECT pg_advisory_xact_lock(:projeto_id)"),
+        {"projeto_id": projeto_id},
+    )
+
+    existente = (
+        db.query(Cenario)
+        .filter(Cenario.projeto_id == projeto_id)
+        .first()
+    )
+
+    if existente:
         raise HTTPException(
-            status_code=400,
-            detail="Informe a irradiância do cenário para executar a simulação OpenDSS."
+            status_code=409,
+            detail=(
+                f"O projeto já possui o cenário #{existente.id}. "
+                "O DEGIA permite apenas um cenário de referência por projeto."
+            ),
         )
 
-    # Se a geração do cenário não for informada,
-    # utiliza a potência FV cadastrada no projeto.
-    potencia_fv_kw = (
-        dados.geracao_fv_kw
-        if dados.geracao_fv_kw is not None
-        else projeto.potencia_fv_kwp
-    )
+    try:
+        referencia = obter_referencia_irradiancia(
+            projeto.uf or ""
+        )
 
-    # Se a carga do cenário não for informada,
-    # utiliza a carga cadastrada no projeto.
-    carga_cenario_kw = (
-        dados.carga_kw
-        if dados.carga_kw is not None
-        else projeto.carga_local_kw
-    )
+    except ValueError as erro:
+        raise HTTPException(
+            status_code=400,
+            detail="O projeto não possui uma UF válida."
+        ) from erro
 
-    # Executa a simulação elétrica centralizada.
+    except Exception as erro:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Não foi possível obter a irradiância de referência: {erro}"
+        ) from erro
+
+    potencia_fv_kw = projeto.potencia_fv_kwp
+    carga_cenario_kw = projeto.carga_local_kw
+    irradiancia = referencia["irradiancia_w_m2"]
+
     try:
         resultado = executar_simulacao_cenario(
             projeto=projeto,
             geracao_fv_kw=potencia_fv_kw,
-            irradiancia_w_m2=dados.irradiancia_w_m2,
-            carga_kw=carga_cenario_kw
+            irradiancia_w_m2=irradiancia,
+            carga_kw=carga_cenario_kw,
         )
-
     except Exception as erro:
         raise HTTPException(
             status_code=500,
-            detail=f"Erro durante a simulação OpenDSS: {str(erro)}"
-        )
+            detail=f"Erro durante a simulação OpenDSS/IA: {erro}",
+        ) from erro
 
-    payload = dados.model_dump()
+    observacao_usuario = (dados.observacao or "").strip()
+    proveniencia = (
+        f"{referencia['fonte_irradiancia']}. "
+        f"{referencia['observacao']}"
+    )
 
-    # Entradas efetivamente usadas na simulação.
-    payload["carga_kw"] = carga_cenario_kw
-    payload["geracao_fv_kw"] = potencia_fv_kw
-    payload["no_rede"] = resultado["no_rede"]
-    payload["fator_potencia"] = resultado["fator_potencia"]
-
-    # Resultados calculados automaticamente.
-    payload["tensao_inicial_pu"] = resultado["tensao_inicial_pu"]
-    payload["tensao_resultado_pu"] = resultado["tensao_resultado_pu"]
-    payload["tensao_resultado_v"] = resultado["tensao_resultado_v"]
-    payload["tensao_prevista_ml_pu"] = resultado["tensao_prevista_ml_pu"]
-    payload["erro_absoluto_ml_pu"] = resultado["erro_absoluto_ml_pu"]
-    payload["erro_percentual_ml"] = resultado["erro_percentual_ml"]
-    payload["origem_resultado"] = resultado["origem_resultado"]
-    payload["classificacao_risco"] = resultado["classificacao_risco"]
+    cenario = Cenario(
+        projeto_id=projeto_id,
+        nome="Cenário média anual de irradiância da localidade",
+        geracao_fv_kw=potencia_fv_kw,
+        irradiancia_w_m2=irradiancia,
+        carga_kw=carga_cenario_kw,
+        observacao=(
+            f"{observacao_usuario}\n{proveniencia}"
+            if observacao_usuario
+            else proveniencia
+        ),
+        **resultado,
+    )
 
     try:
-        cenario = Cenario(
-            projeto_id=projeto_id,
-            **payload
-        )
-
         db.add(cenario)
         db.commit()
         db.refresh(cenario)
-
         return cenario
-
     except Exception as erro:
         db.rollback()
-
         raise HTTPException(
             status_code=500,
-            detail=f"Erro ao salvar o cenário: {str(erro)}"
-        )
+            detail=f"Erro ao salvar o cenário: {erro}",
+        ) from erro
 
 # ============================================================
 # ETAPA 7 - ANÁLISE TÉCNICO-ECONÔMICA DAS ALTERNATIVAS
@@ -571,7 +699,8 @@ async def avaliar_alternativas_endpoint(
         )
 
         resultado_completo = aplicar_analise_economica(
-            resultado_tecnico
+            resultado_tecnico,
+            uf=dados.uf
         )
 
         return resultado_completo
@@ -589,159 +718,13 @@ async def gerar_cenarios_automaticamente(
     dados: GeracaoCenariosRequest,
     db: Session = Depends(get_db)
 ):
-    projeto = obter_projeto_ou_404(projeto_id, db)
-
-    total_combinacoes = (
-        len(dados.geracoes_fv_kw)
-        * len(dados.irradiancias_w_m2)
-        * len(dados.cargas_kw)
-    )
-
-    if total_combinacoes == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="Informe pelo menos um valor de geração FV, irradiância e carga."
-        )
-
-    # ---------------------------------------------------------
-    # Remove combinações eletricamente equivalentes.
-    #
-    # Potência FV efetiva:
-    # geracao_fv_kw * irradiancia_w_m2 / 1000
-    #
-    # Se potência efetiva + carga forem iguais,
-    # mantemos apenas uma combinação para simulação.
-    # ---------------------------------------------------------
-
-    combinacoes_unicas = []
-    chaves_processadas = set()
-
-    for geracao_fv_kw in dados.geracoes_fv_kw:
-        for irradiancia_w_m2 in dados.irradiancias_w_m2:
-            for carga_kw in dados.cargas_kw:
-
-                potencia_fv_efetiva_kw = round(
-                    float(geracao_fv_kw)
-                    * float(irradiancia_w_m2)
-                    / 1000.0,
-                    6
-                )
-
-                chave = (
-                    potencia_fv_efetiva_kw,
-                    round(float(carga_kw), 6)
-                )
-
-                if chave in chaves_processadas:
-                    continue
-
-                chaves_processadas.add(chave)
-
-                combinacoes_unicas.append({
-                    "geracao_fv_kw": geracao_fv_kw,
-                    "irradiancia_w_m2": irradiancia_w_m2,
-                    "carga_kw": carga_kw,
-                    "potencia_fv_efetiva_kw": potencia_fv_efetiva_kw
-                })
-
-    total_combinacoes_unicas = len(combinacoes_unicas)
-
-    if total_combinacoes_unicas > 500:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "O limite atual é de 500 combinações elétricas "
-                "únicas por lote."
-            )
-        )
-
-    cenarios_gerados = []
-    erros = []
-
-    numero_cenario = 1
-
-    for combinacao in combinacoes_unicas:
-
-        geracao_fv_kw = combinacao["geracao_fv_kw"]
-        irradiancia_w_m2 = combinacao["irradiancia_w_m2"]
-        carga_kw = combinacao["carga_kw"]
-        potencia_fv_efetiva_kw = combinacao["potencia_fv_efetiva_kw"]
-
-        try:
-            resultado = executar_simulacao_cenario(
-                projeto=projeto,
-                geracao_fv_kw=geracao_fv_kw,
-                irradiancia_w_m2=irradiancia_w_m2,
-                carga_kw=carga_kw
-            )
-
-            cenario = Cenario(
-                projeto_id=projeto_id,
-                nome=f"AUTO-{numero_cenario:03d}",
-                geracao_fv_kw=geracao_fv_kw,
-                irradiancia_w_m2=irradiancia_w_m2,
-                carga_kw=carga_kw,
-                no_rede=resultado["no_rede"],
-                fator_potencia=resultado["fator_potencia"],
-                tensao_inicial_pu=resultado["tensao_inicial_pu"],
-                tensao_resultado_pu=resultado["tensao_resultado_pu"],
-                tensao_resultado_v=resultado["tensao_resultado_v"],
-                tensao_prevista_ml_pu=resultado["tensao_prevista_ml_pu"],
-                erro_absoluto_ml_pu=resultado["erro_absoluto_ml_pu"],
-                erro_percentual_ml=resultado["erro_percentual_ml"],
-                origem_resultado=resultado["origem_resultado"],
-                classificacao_risco=resultado["classificacao_risco"],
-                observacao="Cenário gerado automaticamente pelo DEGIA."
-            )
-
-            db.add(cenario)
-            db.flush()
-
-            cenarios_gerados.append({
-                "id": cenario.id,
-                "nome": cenario.nome,
-                "geracao_fv_kw": geracao_fv_kw,
-                "irradiancia_w_m2": irradiancia_w_m2,
-                "carga_kw": carga_kw,
-                "potencia_fv_efetiva_kw": potencia_fv_efetiva_kw,
-                "tensao_resultado_pu": resultado["tensao_resultado_pu"],
-                "classificacao_risco": resultado["classificacao_risco"]
-            })
-
-        except Exception as erro:
-            erros.append({
-                "geracao_fv_kw": geracao_fv_kw,
-                "irradiancia_w_m2": irradiancia_w_m2,
-                "carga_kw": carga_kw,
-                "potencia_fv_efetiva_kw": potencia_fv_efetiva_kw,
-                "erro": str(erro)
-            })
-
-        numero_cenario += 1
-
-    try:
-        db.commit()
-
-    except Exception as erro:
-        db.rollback()
-
-        raise HTTPException(
-            status_code=500,
-            detail=f"Erro ao salvar o lote de cenários: {str(erro)}"
-        )
-
-    return {
-        "projeto_id": projeto_id,
-        "total_combinacoes": total_combinacoes,
-        "total_combinacoes_unicas": total_combinacoes_unicas,
-        "total_descartadas_redundancia": (
-            total_combinacoes - total_combinacoes_unicas
+    raise HTTPException(
+        status_code=409,
+        detail=(
+            "A geração em lote está desativada. "
+            "Cada projeto permite um único cenário de referência."
         ),
-        "total_gerados": len(cenarios_gerados),
-        "total_erros": len(erros),
-        "cenarios": cenarios_gerados,
-        "erros": erros
-    }
+    )
 
 @app.get("/api/projetos/{projeto_id}/cenarios", response_model=list[CenarioResponse])
 def listar_cenarios(projeto_id: int, db: Session = Depends(get_db)):
@@ -876,6 +859,7 @@ async def simular(dados: SimulacaoRequest):
             no_rede=dados.no_rede,
             potencia_fv_kw=dados.potencia_fv_kw,
             irradiancia_w_m2=dados.irradiancia_w_m2,
+            carga_kw=dados.carga_kw,
             fator_potencia=dados.fator_potencia
         )
 
@@ -948,3 +932,4 @@ async def comparar_opendss_ml(dados: ComparacaoRequest):
             "erro_percentual": erro_percentual
         }
     }
+

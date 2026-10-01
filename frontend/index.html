@@ -99,7 +99,7 @@
                 <div>
                     <span class="eyebrow">Base cadastrada</span>
                     <h3>Projetos</h3>
-                    <p>Selecione um projeto para trabalhar com seus cenários e dashboard.</p>
+                    <p>Selecione um projeto para trabalhar com seus cenário e dashboard.</p>
                 </div>
                 <button id="btnAtualizar" class="secondary">Atualizar</button>
             </div>
@@ -128,30 +128,23 @@
             <form id="cenarioForm" class="grid scenario-grid">
                 <label>
                     Nome do cenário
-                    <input id="cenarioNome" required placeholder="Ex.: Alta geração / baixa carga">
+                    <input
+                            id="cenarioNome"
+                            value="Cenário média anual de irradiância da localidade"
+                            readonly
+                    >
                 </label>
 
                 <label>
-                    Geração FV (kW)
-                    <input id="geracaoFv" type="number" min="0" step="0.01">
+                    Geração FV instalada (kWp)
+                    <input id="geracaoFv" type="number" readonly>
+                    <small class="field-hint">Preenchida automaticamente pelo projeto.</small>
                 </label>
 
                 <label>
-                    Irradiância do cenário (W/m²)
-
-                    <select id="modoIrradiancia">
-                        <option value="ATUAL">Usar irradiância atual</option>
-                        <option value="MANUAL">Informar manualmente</option>
-                    </select>
-
+                    Média anual de irradiância da localidade
                     <div class="inline-field">
-                        <input
-                                id="irradiancia"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                readonly
-                        >
+                        <input id="irradiancia" type="number" readonly>
 
                         <button
                                 type="button"
@@ -163,19 +156,22 @@
                     </div>
 
                     <small class="field-hint" id="irradianciaFonte">
-                        Preenchida automaticamente conforme a referência de localidade do projeto.
+                        Aguardando consulta da irradiância de referência da UF.
                     </small>
                 </label>
 
                 <label>
-                    Carga no cenário (kW)
-                    <input id="cenarioCarga" type="number" min="0" step="0.01">
+                    Carga local (kW)
+                    <input id="cenarioCarga" type="number" readonly>
+                    <small class="field-hint">Preenchida automaticamente pelo projeto.</small>
                 </label>
 
                 <label>
                     Nó / ponto da rede
                     <input id="noRede" readonly>
-                    <small class="field-hint">Será fornecido pela configuração da rede/OpenDSS.</small>
+                    <small class="field-hint">
+                        Fornecido pela configuração da rede/OpenDSS.
+                    </small>
                 </label>
 
                 <label>
@@ -234,7 +230,7 @@
             <div class="section-title">
                 <div>
                     <span class="eyebrow">Histórico</span>
-                    <h3>Cenários do projeto</h3>
+                    <h3>Cenário do projeto</h3>
                 </div>
                 <button id="btnAtualizarCenarios" class="secondary">Atualizar</button>
             </div>
@@ -294,26 +290,21 @@
 
             <div class="kpi-grid">
 
-                <article class="kpi-card">
-                    <span>Cenários analisados</span>
-                    <strong id="kpiTotalCenarios">0</strong>
-                    <small id="kpiComResultado">0 com resultado</small>
-                </article>
 
                 <article class="kpi-card">
-                    <span>Maior tensão</span>
+                    <span>Tensão do cenário</span>
                     <strong id="kpiTensaoMax">—</strong>
                     <small id="kpiTensaoMaxCenario">Sem resultado</small>
                 </article>
 
                 <article class="kpi-card">
-                    <span>Cenários em atenção</span>
-                    <strong id="kpiRiscoAtencao">0</strong>
-                    <small>classificação DEGIA</small>
+                    <span>Status do cenário</span>
+                    <strong id="kpiStatusCenario">—</strong>
+                    <small id="kpiStatusDescricao">Aguardando resultado</small>
                 </article>
 
                 <article class="kpi-card">
-                    <span>Erro médio da IA</span>
+                    <span>Erro da IA</span>
                     <strong id="kpiErroMedioIA">—</strong>
                     <small>OpenDSS × Random Forest</small>
                 </article>
@@ -340,19 +331,6 @@
                     ></div>
                 </article>
 
-                <article class="card">
-                    <span class="eyebrow">Classificação</span>
-                    <h3>Distribuição de risco</h3>
-                    <p>
-                        Classificação interna utilizada pelo DEGIA
-                        para priorização dos cenários.
-                    </p>
-
-                    <div
-                            id="riscoResumo"
-                            class="risk-summary"
-                    ></div>
-                </article>
 
             </div>
 
@@ -360,17 +338,16 @@
                 <div class="section-title">
                     <div>
                         <span class="eyebrow">Diagnóstico técnico</span>
-                        <h3>Cenário mais crítico</h3>
+                        <h3>Diagnóstico do cenário</h3>
                         <p>
-                            Cenário com a maior tensão encontrada
-                            entre os resultados analisados.
+                            Dados técnicos e resultados obtidos para o cenário do projeto.
                         </p>
                     </div>
                 </div>
 
                 <div id="cenarioCritico" class="context-grid">
                     <div class="empty-inline">
-                        Aguardando resultados.
+                        Aguardando resultado.
                     </div>
                 </div>
             </article>
@@ -382,7 +359,7 @@
                         <h3>Recomendação DEGIA</h3>
                         <p>
                             Avaliação automática das alternativas técnicas
-                            para o cenário mais crítico.
+                            para o cenário do projeto.
                         </p>
                     </div>
                 </div>
@@ -390,7 +367,7 @@
                 <div id="recomendacaoDashboard">
                     <div class="empty-inline">
                         A recomendação será calculada a partir
-                        do cenário mais crítico do projeto.
+                        do cenário do projeto.
                     </div>
                 </div>
             </article>
@@ -404,15 +381,15 @@
             <article class="card">
                 <div class="section-title">
                     <div>
-                        <span class="eyebrow">Resultados</span>
-                        <h3>Cenários analisados</h3>
+                        <span class="eyebrow">Resultado</span>
+                        <h3>Resultado do cenário</h3>
                         <p>
-                            Entradas operacionais, resultados OpenDSS,
-                            previsão da IA e classificação de risco.
+                            Entradas operacionais, resultado OpenDSS,
+                            previsão da IA e classificação de risco
+                            do cenário do projeto.
                         </p>
                     </div>
                 </div>
-
                 <div id="dashboardTabela"></div>
             </article>
 

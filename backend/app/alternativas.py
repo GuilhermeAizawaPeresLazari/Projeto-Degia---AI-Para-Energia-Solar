@@ -108,44 +108,6 @@ def avaliar_alternativas(
     # 3. AUMENTO DA CARGA LOCAL
     # ========================================================
 
-    for percentual in [10, 20]:
-
-        fator_aumento = 1 + percentual / 100
-        nova_carga = carga_kw * fator_aumento
-
-        resultado = simular_cenario(
-            no_rede=no_rede,
-            potencia_fv_kw=potencia_fv_kw,
-            irradiancia_w_m2=irradiancia_w_m2,
-            carga_kw=nova_carga,
-            fator_potencia=fator_potencia
-        )
-
-        tensao = resultado["tensao_fv_max_pu"]
-
-        alternativas.append(
-            criar_resultado_alternativa(
-                codigo=f"AUMENTO_CARGA_{percentual}",
-                nome=(
-                    f"Aumento de {percentual}% "
-                    "da carga local"
-                ),
-                tipo="CARGA_LOCAL",
-                intensidade=percentual,
-                tensao_original=tensao_original,
-                tensao_resultado=tensao,
-                potencia_fv_kw=potencia_fv_kw,
-                carga_kw=nova_carga,
-                fator_potencia=fator_potencia
-            )
-        )
-
-    # ========================================================
-    # 4. AJUSTE DE FATOR DE POTÊNCIA
-    #
-    # No modelo atual do OpenDSS, valores negativos testados
-    # produziram redução da tensão no barramento 675.
-    # ========================================================
 
     for novo_fp in [-0.98, -0.95]:
 
